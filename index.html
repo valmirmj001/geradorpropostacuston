@@ -1186,6 +1186,14 @@ function isIOS(){
   return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1); // iPadOS se identifica como Mac
 }
+function mostrarLinkPDF(url, nome){
+  const el=document.getElementById('fileMsg');
+  el.innerHTML = 'PDF pronto. <a href="'+url+'" target="_blank" rel="noopener" download="'+nome+'" '+
+    'style="color:#0A3A2C;font-weight:700;text-decoration:underline">Toque aqui para abrir/baixar o PDF</a>'+
+    ' — se abrir dentro do navegador, use o ícone de compartilhar para "Salvar em Arquivos".';
+  el.style.display='block';
+  clearTimeout(window._fmTimer);
+}
 function avisoArquivo(msg){
   const el=document.getElementById('fileMsg');
   if(!el) return;
@@ -1249,23 +1257,17 @@ async function baixarPDF(){
     const url = URL.createObjectURL(blob);
     const nome = nomeArquivo('pdf');
 
-    if(isIOS()){
-      const w = window.open(url,'_blank');
-      if(!w){
-        avisoArquivo('O navegador bloqueou a nova aba. Permita pop-ups para este site e tente novamente.');
-      }else{
-        avisoArquivo('PDF gerado! Na tela que abriu, toque no ícone de compartilhar e escolha "Salvar em Arquivos".');
-      }
-      setTimeout(function(){URL.revokeObjectURL(url);},60000);
-    } else {
-      const a=document.createElement('a');
-      a.href=url; a.download=nome;
-      document.body.appendChild(a); a.click();
-      setTimeout(function(){URL.revokeObjectURL(url);a.remove();},1500);
-      avisoArquivo('PDF baixado: '+nome);
-    }
+    // Tenta o download automático (funciona no desktop e em boa parte das versões do iOS Safari).
+    const a=document.createElement('a');
+    a.href=url; a.download=nome; a.rel='noopener';
+    document.body.appendChild(a); a.click(); a.remove();
+
+    // Link manual de reforço: um toque direto do usuário nunca é bloqueado pelo navegador,
+    // ao contrário de um window.open() disparado pelo script depois do processamento.
+    mostrarLinkPDF(url, nome);
+    setTimeout(function(){URL.revokeObjectURL(url);},120000);
   }catch(e){
-    avisoArquivo('Não foi possível gerar o PDF agora ('+(e&&e.message?e.message:'erro desconhecido')+'). Tente de novo ou use "Salvar / Imprimir PDF".');
+    avisoArquivo('Não foi possível gerar o PDF agora ('+(e&&e.message?e.message:'erro desconhecido')+'). Tente de novo ou use "Imprimir (via navegador)".');
   }finally{
     overlay.className='pdfoverlay';
     docEl.style.display=wasDisplay;

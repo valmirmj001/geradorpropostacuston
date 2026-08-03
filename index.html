@@ -46,6 +46,11 @@ input:focus,select:focus{outline:0;border-color:var(--gold);background:#fff}
 .bs .dn{color:#B3261E}
 .basetgl{display:flex;align-items:center;gap:7px;margin:6px 0 2px;font-size:12px;color:#4A5B6D}
 .basetgl input{width:auto;margin:0}
+.markupbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0 4px;padding:12px 14px;background:#F7F4EA;border:1px solid #E8DFC0;border-radius:8px}
+.markupbar label{font-family:var(--cond);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#6B5D2E;font-weight:700}
+.markupbar input{width:120px;padding:8px 10px;border:1px solid #D8CFA8;border-radius:6px;font-size:14px}
+.markupbar .btn2{padding:8px 16px;font-size:13px;white-space:nowrap}
+.markupbar .mhint{flex-basis:100%;font-size:11.5px;color:#8A7B45;text-transform:none;letter-spacing:.2px;font-weight:400}
 .mhint{font-size:11px;font-weight:400;letter-spacing:.2px;text-transform:none;color:#8A9BAC;text-transform:none}
 .filemsg{display:none;margin-top:9px;padding:9px 12px;font-size:12.5px;line-height:1.5;color:#0A3A2C;background:#DCEFE5;border:1px solid #B7DECB;border-radius:8px}
 .pdfoverlay{display:none;position:fixed;inset:0;background:rgba(6,14,24,.86);z-index:9999;align-items:center;justify-content:center}
@@ -360,6 +365,12 @@ table.tx tbody tr:first-child td{background:#F2F6F9;font-weight:600;color:var(--
 <div class="panel">
   <h2>Ajuste fino das taxas</h2>
   <label class="basetgl"><input type="checkbox" checked onchange="toggleBase(this)"> Mostrar custo base Cappta e margem <span style="opacity:.65">(uso interno — não sai na proposta)</span></label>
+  <div class="markupbar">
+    <label>Markup global</label>
+    <input id="markupVal" placeholder="Ex: 0,50 ou -0,30">
+    <button onclick="aplicarMarkupGlobal()" class="btn2">Aplicar a todas as taxas</button>
+    <span class="mhint">Soma (em pontos percentuais) a todas as taxas das tabelas ativas agora. Use valor negativo para reduzir.</span>
+  </div>
   <p class="sub">Edite qualquer valor (em %). A proposta atualiza automaticamente.</p>
   <div id="tblbox"></div>
 </div>
@@ -920,6 +931,30 @@ function buildAll(){buildModes();buildTabSel();buildBands();render();gerar();che
 
 function n2(v){return v.toFixed(2).replace('.',',');}
 function toggleBase(el){showBase=el.checked;render();}
+function aplicarMarkupGlobal(){
+  const raw=(document.getElementById('markupVal').value||'').trim();
+  if(!raw){ avisoArquivo('Digite um valor de markup antes de aplicar (ex: 0,50 ou -0,30).'); return; }
+  const n = parseFloat(raw.replace(/\s/g,'').replace(',','.'));
+  if(isNaN(n)){ avisoArquivo('Valor de markup inválido. Use algo como 0,50 ou -0,30.'); return; }
+
+  const tabs = activeTabs();
+  if(!tabs.length){ avisoArquivo('Nenhuma tabela ativa no momento.'); return; }
+
+  let alterados=0;
+  tabs.forEach(t=>{
+    const bd=taxas[t]; if(!bd) return;
+    Object.keys(bd).forEach(b=>{
+      bd[b] = bd[b].map(v=>{
+        if(v==null) return v;
+        alterados++;
+        return Math.round((v+n)*100)/100;
+      });
+    });
+  });
+
+  render(); gerar();
+  avisoArquivo('Markup de '+(n>0?'+':'')+n.toFixed(2).replace('.',',')+' pontos aplicado a '+alterados+' taxa(s), nas tabelas ativas ('+tabs.join(', ')+').');
+}
 function f(v){return v==null?'—':v.toFixed(2).replace('.',',')+'%';}
 
 /* ---------- CNPJ: formatação, validação e consulta ---------- */
